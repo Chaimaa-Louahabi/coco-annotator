@@ -214,19 +214,25 @@ export default {
 	  this.$parent.save();
       return true;
     },
+    /*
+     * Optimize the path's contour based on the "simplify" input
+     */
     simplifyPath() {
-      let simplify = this.simplify;
       let points = [];
+      //Get currrent polygon's points
       this.polygon.path.segments.forEach(seg => {
           points.push({ x: seg.point.x, y: seg.point.y });
         }
       );
-      points = simplifyjs(points, simplify, true);
-      this.polygon.path.remove();
-      this.polygon.path = null;
+      //Simplify its points
+      points = simplifyjs(points, this.simplify, true);
+      // Create a Path object with these points
       let newPath = new paper.Path(this.polygon.pathOptions);
       newPath.segments = points;
       newPath.closePath();
+      //Update current polygon with simplified contour
+      this.polygon.path.remove();
+      this.polygon.path = null;
       this.polygon.path = newPath;
 
     },
