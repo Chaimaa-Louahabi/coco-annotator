@@ -1,5 +1,6 @@
 <script>
 import paper from "paper";
+import simplifyjs from "simplify-js";
 import tool from "@/mixins/toolBar/tool";
 import UndoAction from "@/undo";
 
@@ -54,6 +55,7 @@ export default {
     ...mapMutations(["addUndo", "removeUndos"]),
     export() {
       return {
+        simplify: this.polygon.simplify,
         guidance: this.polygon.guidance,
         completeDistance: this.polygon.completeDistance,
         minDistance: this.polygon.minDistance,
@@ -198,8 +200,8 @@ export default {
 
       this.polygon.path.fillColor = "black";
       this.polygon.path.closePath();
-
-      this.$parent.uniteCurrentAnnotation(this.polygon.path);
+      this.simplifyPath();
+      this.$parent.uniteCurrentAnnotation(this.polygon.path, false);
 
       this.polygon.path.remove();
       this.polygon.path = null;
@@ -211,6 +213,22 @@ export default {
       this.removeUndos(this.actionTypes.ADD_POINTS);
 	  this.$parent.save();
       return true;
+    },
+    simplifyPath() {
+      let simplify = this.simplify;
+      let points = [];
+      this.polygon.path.segments.forEach(seg => {
+          points.push({ x: seg.point.x, y: seg.point.y });
+        }
+      );
+      points = simplifyjs(points, simplify, true);
+      this.polygon.path.remove();
+      this.polygon.path = null;
+      let newPath = new paper.Path(this.polygon.pathOptions);
+      newPath.segments = points;
+      newPath.closePath();
+      this.polygon.path = newPath;
+
     },
     removeLastPoint() {
       this.polygon.path.removeSegment(this.polygon.path.segments.length - 1);
@@ -248,6 +266,10 @@ export default {
     },
     "polygon.minDistance"(newDistance) {
       this.tool.minDistance = newDistance;
+    },
+    "polygon.simplify"(newDegree) {
+      this.tool.simplify = newDegree;
+      this.simplify = newDegree;
     },
     "polygon.pathOptions.strokeColor"(newColor) {
       if (this.polygon.path == null) return;
