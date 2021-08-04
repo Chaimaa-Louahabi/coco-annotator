@@ -1,17 +1,6 @@
 import imantics as im
 import json
-import cv2
-from mongoengine import SequenceField
-from mongoengine import IntField
-from mongoengine import BooleanField
-from mongoengine import StringField
-from mongoengine import ListField
-from mongoengine import DictField
-from mongoengine import DynamicDocument
-from mongoengine import EmbeddedDocumentListField
-from mongoengine import DateTimeField
-#from mongoengine import *
-import numpy as np
+from mongoengine import *
 from .datasets import DatasetModel
 from .categories import CategoryModel
 from .events import Event
@@ -87,15 +76,6 @@ class AnnotationModel(DynamicDocument):
     def is_empty(self):
         return len(self.segmentation) == 0 or self.area == 0
 
-    def mask(self):
-        """ Returns binary mask of annotation """
-        mask = np.zeros((self.height, self.width))
-        pts = [
-            np.array(anno).reshape(-1, 2).round().astype(int)
-            for anno in self.segmentation
-        ]
-        mask = cv2.fillPoly(mask, pts, 1)
-        return mask
 
     def clone(self):
         """ Creates a clone """
