@@ -1,8 +1,17 @@
 import imantics as im
 import json
-
-from mongoengine import *
-
+import cv2
+from mongoengine import SequenceField
+from mongoengine import IntField
+from mongoengine import BooleanField
+from mongoengine import StringField
+from mongoengine import ListField
+from mongoengine import DictField
+from mongoengine import DynamicDocument
+from mongoengine import EmbeddedDocumentListField
+from mongoengine import DateTimeField
+#from mongoengine import *
+import numpy as np
 from .datasets import DatasetModel
 from .categories import CategoryModel
 from .events import Event
@@ -59,7 +68,6 @@ class AnnotationModel(DynamicDocument):
         super(AnnotationModel, self).__init__(**data)
 
     def save(self, copy=False, *args, **kwargs):
-
         if self.dataset_id and not copy:
             dataset = DatasetModel.objects(id=self.dataset_id).first()
 
