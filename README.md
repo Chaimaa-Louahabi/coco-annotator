@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="#features">Features</a> •
-  <a href="https://github.com/jsbroks/coco-annotator/wiki">Wiki</a> •
+  <a href="httpss://github.com/jsbroks/coco-annotator/wiki">Wiki</a> •
   <a href="https://github.com/jsbroks/coco-annotator/wiki/Getting-Started">Getting Started</a> •
   <a href="https://github.com/jsbroks/coco-annotator/issues">Issues</a> •
   <a href="#license">License</a>
@@ -32,7 +32,8 @@
   <a href="https://hub.docker.com/r/jsbroks/coco-annotator">
     <img src="https://img.shields.io/docker/pulls/jsbroks/coco-annotator.svg">
   </a>
-</p>
+</
+>
 
 COCO Annotator is a web-based image annotation tool designed for versatility and efficiently label images to create training data for image localization and object detection. It provides many distinct features including the ability to label an image segment (or part of a segment), track object instances, labeling objects with disconnected visible parts, efficiently storing and export annotations in the well-known [COCO format](http://cocodataset.org/#format-data). The annotation process is delivered through an intuitive and customizable interface and provides many tools for creating accurate datasets.
 
