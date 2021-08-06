@@ -641,7 +641,7 @@ export default {
       this.keypoints.deleteKeypoint(keypoint);
     },
     /**
-     * Extract this annotation'children who are points or lines
+     * Extract current annotation's children who are points or lines
      */
     getPointsAndLines() {
       let pts_or_lines = [];
@@ -674,7 +674,9 @@ export default {
       let pts_or_lines = this.getPointsAndLines();
 
       let newCompound = new CompoundPath(this.compoundPath.unite(compound));
-      
+
+      if (undoable) this.createUndoAction("Unite");
+
       // Add the points and lines back
       newCompound.addChildren(pts_or_lines);
 
@@ -683,8 +685,6 @@ export default {
       newCompound.onDoubleClick = this.compoundPath.onDoubleClick;
       newCompound.onClick = this.compoundPath.onClick;
       this.annotation.isbbox = isBBox;
-      
-      if (undoable) this.createUndoAction("Unite");
 
       this.compoundPath.remove();
       this.compoundPath = newCompound;
@@ -712,13 +712,11 @@ export default {
       for (let i = 0; i < pts_or_lines.length; i++) {
 
         if (pts_or_lines[i].segments.length == 1) {
-          //it's an isolated point
-          if (! compound.contains( pts_or_lines[i].segments[0].point )) {
-            newCompound.addChild( pts_or_lines[i] );
-          }
+          // It's an isolated point
+          if (! compound.contains( pts_or_lines[i].segments[0].point ))  newCompound.addChild( pts_or_lines[i] );
 
         } else {
-          //it's an isolated line
+          // It's an isolated line
           if (! compound.intersects( pts_or_lines[i] )) newCompound.addChild( pts_or_lines[i] );
         }
       }
