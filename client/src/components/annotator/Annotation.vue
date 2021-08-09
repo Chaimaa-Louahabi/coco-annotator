@@ -641,6 +641,20 @@ export default {
       this.keypoints.deleteKeypoint(keypoint);
     },
     /**
+     * Extract current annotation's children who are points or lines
+     */
+    getPointsAndLines() {
+      let pts_or_lines = [];
+      let children = this.compoundPath.children
+
+      for (let i = 0; i < children.length; i++ ) {
+        if (children[i].segments.length == 2 || children[i].segments.length == 1) {
+          pts_or_lines.push(children[i]);
+        }
+      }
+      return pts_or_lines;
+    },
+    /**
      * Unites current annotation path with anyother path.
      * @param {paper.CompoundPath} compound compound to unite current annotation path with
      * @param {boolean} simplify simplify compound before unite 
@@ -654,19 +668,28 @@ export default {
       if (simplify && compound != null) {
         compound = this.simplifyPath(compound);
       }
-    
-      let newCompound = this.compoundPath.unite(compound);
-      
+
+      // ToRefactor: temporary solution for the issue of unite  that eliminates points and lines
+      // Check the issue here : https://github.com/paperjs/paper.js/issues/1934
+      let pts_or_lines = this.getPointsAndLines();
+
+      let newCompound = new CompoundPath(this.compoundPath.unite(compound));
+
+      if (undoable) this.createUndoAction("Unite");
+
+      // Add the points and lines back
+      newCompound.addChildren(pts_or_lines);
+
       newCompound.strokeColor = null;
       newCompound.strokeWidth = 0;
       newCompound.onDoubleClick = this.compoundPath.onDoubleClick;
       newCompound.onClick = this.compoundPath.onClick;
       this.annotation.isbbox = isBBox;
-      
-      if (undoable) this.createUndoAction("Unite");
 
       this.compoundPath.remove();
       this.compoundPath = newCompound;
+      this.compoundPath.data.annotationId = this.index;
+      this.compoundPath.data.categoryId = this.categoryIndex;
       this.keypoints.bringToFront();
     },
     /**
@@ -681,7 +704,25 @@ export default {
 
       if (this.compoundPath == null) this.createCompoundPath();
 
-      let newCompound = this.compoundPath.subtract(compound);
+      // ToRefactor: temporary solution for the issue of subtract  that eliminates points and lines
+      // Check the issue here : https://github.com/paperjs/paper.js/issues/1934
+      let pts_or_lines = this.getPointsAndLines();
+
+      let newCompound = new CompoundPath(this.compoundPath.subtract(compound));
+
+      // Add the points and lines back
+      for (let i = 0; i < pts_or_lines.length; i++) {
+
+        if (pts_or_lines[i].segments.length == 1) {
+          // It's an isolated point
+          if (! compound.contains( pts_or_lines[i].segments[0].point ))  newCompound.addChild( pts_or_lines[i] );
+
+        } else {
+          // It's an isolated line
+          if (! compound.intersects( pts_or_lines[i] )) newCompound.addChild( pts_or_lines[i] );
+        }
+      }
+      
       newCompound.onDoubleClick = this.compoundPath.onDoubleClick;
       if (undoable) this.createUndoAction("Subtract");
 
