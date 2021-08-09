@@ -688,6 +688,8 @@ export default {
 
       this.compoundPath.remove();
       this.compoundPath = newCompound;
+      this.compoundPath.data.annotationId = this.index;
+      this.compoundPath.data.categoryId = this.categoryIndex;
       this.keypoints.bringToFront();
     },
     /**
