@@ -73,7 +73,7 @@ def paperjs_to_coco(image_width, image_height, paperjs):
         segments_with_area.append(segments_to_add)
 
     if len(segments_with_area) < 1:
-        return pts_or_lines, 0, [0, 0, 0, 0]
+        return pts_or_lines, 0, None
     else :
         area, bbox = get_segmentation_area_and_bbox(
         segments_with_area, image_height, image_width)
