@@ -117,13 +117,14 @@ class AnnotatorData(Resource):
                     # Generate coco formatted segmentation data
                     segmentation, area, bbox = coco_util.\
                         paperjs_to_coco(width, height, paperjs_object)
-
+                    
                     db_annotation.update(
                         set__segmentation=segmentation,
                         set__area=area,
                         set__isbbox=annotation.get('isbbox', False),
                         set__bbox=bbox,
                         set__paper_object=paperjs_object,
+                        set__binaryMask=annotation.get('binaryMask', [])
                     )
                     if area > 0:
                         counted = True

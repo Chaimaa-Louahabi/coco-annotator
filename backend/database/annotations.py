@@ -19,6 +19,7 @@ class AnnotationModel(DynamicDocument):
     dataset_id = IntField()
 
     segmentation = ListField(default=[])
+    #binaryMask = ListField(default=[])
     area = IntField(default=0)
     bbox = ListField(default=[0, 0, 0, 0])
     iscrowd = BooleanField(default=False)
