@@ -303,6 +303,8 @@ export default {
       showKeypoints: false,
       color: this.annotation.color,
       compoundPath: null,
+      binaryMask: [],
+      worker: null,
       keypoints: null,
       metadata: [],
       isEmpty: true,
@@ -343,7 +345,14 @@ export default {
         this.compoundPath.remove();
         this.compoundPath = null;
       }
-
+      // Create a binary mask of zeros
+      this.binaryMask = Array.from(
+        Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
+      );
+      // Extract binary mask from RLE if found
+      console.log("this.annotation.binaryMask", this.annotation.binaryMask)
+      if (this.annotation.binaryMask != null)  this.decodeRLE(this.annotation.binaryMask);
+      
       this.createCompoundPath(
         this.annotation.paper_object,
         this.annotation.segmentation
@@ -543,12 +552,38 @@ export default {
         if (simplify != 0) {
           path.simplify(simplify);
         }
+        path.smooth();
       }
       // Eliminate segments' handles
       // ToDo: find a way to represent Bézier curves and get their binary masks in python
-      path.flatten(1);
+      //path.flatten(1);
 
       return path;
+    },
+    launchWorker(path, eraser) {
+      // Generate sub-binary mask
+      if (window.Worker) {
+        let worker = new Worker('worker.js');
+
+        // Send a message to the worker
+        worker.postMessage([
+          path.exportJSON({asString: false, precision: 1}),
+          Math.round(path.bounds.height),
+          Math.round(path.bounds.width)
+        ]);
+
+        // Receive a  message from the worker
+        worker.onmessage = (e) => {
+          worker.terminate();
+
+          let subMask = e.data[0];
+          let x = e.data[1];
+          let y = e.data[2];
+          let height = e.data[3];
+          let width = e.data[4];
+          this.updateBinaryMask(subMask, x, y, height, width, eraser);
+        }
+      }
     },
     undoCompound() {
       if (this.pervious.length == 0) return;
@@ -640,6 +675,26 @@ export default {
     deleteKeypoint(keypoint) {
       this.keypoints.deleteKeypoint(keypoint);
     },
+    updateBinaryMask(subMask, x, y, height, width, eraser) {
+
+      x = Math.round(x + this.annotation.width / 2);
+      y = Math.round(y + this.annotation.height / 2);
+
+      for (let i = 0; i < width; i++) {
+        for (let j = 0; j < height; j++) {
+
+          if (!eraser) {
+
+            this.binaryMask[y + j][x + i] = this.binaryMask[y + j][x + i] || subMask[j][i];
+          } 
+          else if (this.binaryMask[y + j][x + i] && subMask[j][i]) {
+
+            this.binaryMask[y + j][x + i] = 0;
+            
+          }
+        }
+      }
+    },
     /**
      * Extract current annotation's children who are points or lines
      */
@@ -668,7 +723,7 @@ export default {
       if (simplify && compound != null) {
         compound = this.simplifyPath(compound);
       }
-
+      this.launchWorker(compound);
       // ToRefactor: temporary solution for the issue of unite  that eliminates points and lines
       // Check the issue here : https://github.com/paperjs/paper.js/issues/1934
       let pts_or_lines = this.getPointsAndLines();
@@ -700,7 +755,9 @@ export default {
      */
     subtract(compound, simplify = true, undoable = true) {
 
-      if (simplify) compound = this.simplifyPath(compound);
+      if (simplify) compound = this.simplifyPath(compound, true);
+
+      this.launchWorker(compound, true);
 
       if (this.compoundPath == null) this.createCompoundPath();
 
@@ -730,6 +787,34 @@ export default {
       this.compoundPath = newCompound;
       this.keypoints.bringToFront();
       
+    },
+    decodeRLE(rle){
+      // TO DO
+    },
+    encodeRLE() {
+      let imageArray = this.binaryMask;
+      let lastElement = imageArray[0][0];
+      let lastSequenceSize = 1;
+      let encoding = [];
+
+      if (lastElement === 1) {
+        encoding.push(0);
+      }
+      for (let j = 0; j < this.annotation.width; j++) {
+        for (let i = 0; i < this.annotation.height; i++) {
+
+          if (lastElement !== imageArray[i][j]) {
+            encoding.push(lastSequenceSize);
+            lastElement = imageArray[i][j];
+            lastSequenceSize = 1;
+
+          } else {
+            lastSequenceSize += 1;
+          }
+        }
+      }
+      encoding.push(lastSequenceSize);
+      return encoding;
     },
     setColor() {
       if (this.compoundPath == null) return;
@@ -787,6 +872,8 @@ export default {
       annotationData.sessions = this.sessions;
       this.sessions = [];
 
+      //export binary mask
+      annotationData.binaryMask = this.encodeRLE();
       return annotationData;
     },
     emitModify() {
