@@ -304,13 +304,13 @@ export default {
       color: this.annotation.color,
       compoundPath: null,
       binaryMask: [],
-      worker: null,
       keypoints: null,
       metadata: [],
       isEmpty: true,
       name: "",
       uuid: "",
-      pervious: [],
+      previous: [],
+      rle: [],
       count: 0,
       currentKeypoint: null,
       keypoint: {
@@ -350,9 +350,10 @@ export default {
         Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
       );
       // Extract binary mask from RLE if found
-      console.log("this.annotation.binaryMask", this.annotation.binaryMask)
-      if (this.annotation.binaryMask != null)  this.decodeRLE(this.annotation.binaryMask);
-      
+      if (  this.annotation.rle.hasOwnProperty('counts')) {
+        this.rle = this.annotation.rle['counts'];
+        this.decodeRLE(this.annotation.rle['counts']);
+      }
       this.createCompoundPath(
         this.annotation.paper_object,
         this.annotation.segmentation
@@ -516,8 +517,7 @@ export default {
       let copy = this.compoundPath.clone();
       copy.fullySelected = false;
       copy.visible = false;
-      this.pervious.push(copy);
-
+      this.previous.push(copy);
       let action = new UndoAction({
         name: "Annotation " + this.annotation.id,
         action: actionName,
@@ -552,7 +552,7 @@ export default {
         if (simplify != 0) {
           path.simplify(simplify);
         }
-        path.smooth();
+        //path.smooth();
       }
       // Eliminate segments' handles
       // ToDo: find a way to represent Bézier curves and get their binary masks in python
@@ -560,7 +560,7 @@ export default {
 
       return path;
     },
-    launchWorker(path, eraser) {
+    launchWorker(path, eraser=false) {
       // Generate sub-binary mask
       if (window.Worker) {
         let worker = new Worker('worker.js');
@@ -571,7 +571,6 @@ export default {
           Math.round(path.bounds.height),
           Math.round(path.bounds.width)
         ]);
-
         // Receive a  message from the worker
         worker.onmessage = (e) => {
           worker.terminate();
@@ -586,10 +585,16 @@ export default {
       }
     },
     undoCompound() {
-      if (this.pervious.length == 0) return;
+      if (this.previous.length == 0) return;
       this.compoundPath.remove();
-      this.compoundPath = this.pervious.pop();
+      this.compoundPath = this.previous.pop();
       this.compoundPath.fullySelected = this.isCurrent;
+      // Create a binary mask of zeros
+      this.binaryMask = Array.from(
+        Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
+      );
+      this.launchWorker(this.compoundPath)
+      
     },
     addKeypoint(point, visibility, label) {
       if (label == null && this.keypoints.contains(point)) return;
@@ -675,7 +680,7 @@ export default {
     deleteKeypoint(keypoint) {
       this.keypoints.deleteKeypoint(keypoint);
     },
-    updateBinaryMask(subMask, x, y, height, width, eraser) {
+    updateBinaryMask(subMask, x, y, height, width, eraser=false) {
 
       x = Math.round(x + this.annotation.width / 2);
       y = Math.round(y + this.annotation.height / 2);
@@ -694,6 +699,7 @@ export default {
           }
         }
       }
+      console.log("finished updating bin mask")
     },
     /**
      * Extract current annotation's children who are points or lines
@@ -717,20 +723,20 @@ export default {
      * @param {isBBox} isBBox mark annotation as bbox.
      */
     unite(compound, simplify = true, undoable = true, isBBox = false) {
-
       if (this.compoundPath == null) this.createCompoundPath();
+
+      if (undoable) this.createUndoAction("Unite");
 
       if (simplify && compound != null) {
         compound = this.simplifyPath(compound);
       }
+      
       this.launchWorker(compound);
       // ToRefactor: temporary solution for the issue of unite  that eliminates points and lines
       // Check the issue here : https://github.com/paperjs/paper.js/issues/1934
       let pts_or_lines = this.getPointsAndLines();
 
       let newCompound = new CompoundPath(this.compoundPath.unite(compound));
-
-      if (undoable) this.createUndoAction("Unite");
 
       // Add the points and lines back
       newCompound.addChildren(pts_or_lines);
@@ -754,9 +760,9 @@ export default {
      * @param {undoable} undoable add an undo action
      */
     subtract(compound, simplify = true, undoable = true) {
-
-      if (simplify) compound = this.simplifyPath(compound, true);
-
+      if (undoable) this.createUndoAction("Subtract");
+      if (simplify) compound = this.simplifyPath(compound);
+      
       this.launchWorker(compound, true);
 
       if (this.compoundPath == null) this.createCompoundPath();
@@ -781,7 +787,7 @@ export default {
       }
       
       newCompound.onDoubleClick = this.compoundPath.onDoubleClick;
-      if (undoable) this.createUndoAction("Subtract");
+      
 
       this.compoundPath.remove();
       this.compoundPath = newCompound;
@@ -789,7 +795,26 @@ export default {
       
     },
     decodeRLE(rle){
-      // TO DO
+      let uncompressed = [];
+      let lastElement = 0;
+
+      if (rle[0] == 0) lastElement = 1;
+
+      for (const element of rle) {
+        for (let i = 0; i < element; i++) {
+          uncompressed.push(lastElement);
+          
+        }
+        lastElement = (lastElement + 1) % 2 ;
+      }
+      let index = 0;
+      for (let j = 0; j < this.annotation.width; j++) {
+        for (let i = 0; i < this.annotation.height; i++) {
+          this.binaryMask[i][j] = uncompressed[index];
+          index++;
+        }
+      }
+      console.log("finished decoding rle to binary mask")
     },
     encodeRLE() {
       let imageArray = this.binaryMask;
@@ -814,6 +839,7 @@ export default {
         }
       }
       encoding.push(lastSequenceSize);
+      console.log("finished encoding binary mask to rle, to send it into backend")
       return encoding;
     },
     setColor() {
@@ -873,7 +899,10 @@ export default {
       this.sessions = [];
 
       //export binary mask
-      annotationData.binaryMask = this.encodeRLE();
+      annotationData.rle = {
+        size : [this.annotation.height, this.annotation.width],
+        counts: this.encodeRLE()
+      };
       return annotationData;
     },
     emitModify() {

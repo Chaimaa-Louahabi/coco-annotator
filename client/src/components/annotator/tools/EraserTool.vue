@@ -79,8 +79,7 @@ export default {
       this.removeSelection();
     },
     erase() {
-      // Undo action, will be handled on mouse down
-      // Simplify, will be handled on mouse up
+      // Undo action, will be handled on mouse up
       let newSelection = this.selection.unite(this.eraser.brush);
 
       this.selection.remove();
