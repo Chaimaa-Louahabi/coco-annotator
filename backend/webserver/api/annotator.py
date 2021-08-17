@@ -124,7 +124,7 @@ class AnnotatorData(Resource):
                         set__isbbox=annotation.get('isbbox', False),
                         set__bbox=bbox,
                         set__paper_object=paperjs_object,
-                        set__binaryMask=annotation.get('binaryMask', [])
+                        set__rle=annotation.get('rle', {})
                     )
                     if area > 0:
                         counted = True

@@ -15,6 +15,7 @@ import datetime
 import os
 import io
 
+
 api = Namespace('image', description='Image related operations')
 
 
@@ -224,12 +225,13 @@ class ImageBinaryMask(Resource):
             return {'message': 'annotation is empty'}, 400
 
         # Convert uncompressed RLE to encoded RLE mask
-        segmentation = {
+        '''segmentation = {
             "counts": list(annotation.binaryMask),
             "size": [height, width]
         }
+        '''
         #bin_mask =  coco_util.get_bin_mask(list(annotation.segmentation), height, width)
-        rles = mask.frPyObjects(segmentation, height, width)
+        rles = mask.frPyObjects(dict(annotation.rle), height, width)
         rle = mask.merge([rles])
         # Extract the binary mask
         bin_mask = mask.decode(rle)
