@@ -27,7 +27,7 @@ onmessage = function(e) {
             }
         }
     }
-    this.postMessage([mask, x, y, height, width]);
+    this.postMessage([mask, x, y, height, width, e.data[3]]);
   }
 
   onerror = event => {
