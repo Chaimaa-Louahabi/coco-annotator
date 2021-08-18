@@ -310,7 +310,7 @@ export default {
       name: "",
       uuid: "",
       previous: [],
-      rle: [],
+      worker: null,
       count: 0,
       currentKeypoint: null,
       keypoint: {
@@ -335,7 +335,7 @@ export default {
     ...mapMutations(["addUndo"]),
     initAnnotation() {
       let metaName = this.annotation.metadata.name;
-
+      this.worker = new Worker("worker.js");
       if (metaName) {
         this.name = metaName;
         delete this.annotation.metadata["name"];
@@ -346,17 +346,19 @@ export default {
         this.compoundPath = null;
       }
       // Create a binary mask of zeros
-      this.binaryMask = Array.from(
-        Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
-      );
+      this.initBinaryMask();
       // Extract binary mask from RLE if found
-      if (  this.annotation.rle.hasOwnProperty('counts')) {
-        this.rle = this.annotation.rle['counts'];
+      if ( this.annotation.rle.hasOwnProperty('counts')) {
         this.decodeRLE(this.annotation.rle['counts']);
       }
       this.createCompoundPath(
         this.annotation.paper_object,
         this.annotation.segmentation
+      );
+    },
+    initBinaryMask() {
+      this.binaryMask = Array.from(
+        Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
       );
     },
     createCompoundPath(json, segments) {
@@ -561,27 +563,24 @@ export default {
       return path;
     },
     launchWorker(path, eraser=false) {
-      // Generate sub-binary mask
-      if (window.Worker) {
-        let worker = new Worker('worker.js');
+      // Send a message to the worker
+      this.worker.postMessage([
+        path.exportJSON({asString: false, precision: 1}),
+        Math.round(path.bounds.height),
+        Math.round(path.bounds.width),
+        eraser
+      ]);
 
-        // Send a message to the worker
-        worker.postMessage([
-          path.exportJSON({asString: false, precision: 1}),
-          Math.round(path.bounds.height),
-          Math.round(path.bounds.width)
-        ]);
-        // Receive a  message from the worker
-        worker.onmessage = (e) => {
-          worker.terminate();
+      // Receive a  message from the worker
+      this.worker.onmessage = (e) => {
+        let subMask = e.data[0];
+        let x = e.data[1];
+        let y = e.data[2];
+        let height = e.data[3];
+        let width = e.data[4];
+        eraser = e.data[5];
 
-          let subMask = e.data[0];
-          let x = e.data[1];
-          let y = e.data[2];
-          let height = e.data[3];
-          let width = e.data[4];
-          this.updateBinaryMask(subMask, x, y, height, width, eraser);
-        }
+        this.updateBinaryMask(subMask, x, y, height, width, eraser);
       }
     },
     undoCompound() {
@@ -590,9 +589,7 @@ export default {
       this.compoundPath = this.previous.pop();
       this.compoundPath.fullySelected = this.isCurrent;
       // Create a binary mask of zeros
-      this.binaryMask = Array.from(
-        Array(this.annotation.height) , () => new Array(this.annotation.width).fill(0)
-      );
+      this.initBinaryMask();
       this.launchWorker(this.compoundPath)
       
     },
@@ -689,7 +686,6 @@ export default {
         for (let j = 0; j < height; j++) {
 
           if (!eraser) {
-
             this.binaryMask[y + j][x + i] = this.binaryMask[y + j][x + i] || subMask[j][i];
           } 
           else if (this.binaryMask[y + j][x + i] && subMask[j][i]) {
