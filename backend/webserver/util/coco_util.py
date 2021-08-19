@@ -277,15 +277,19 @@ def get_image_coco(image_id):
         category_annotations = fix_ids(category_annotations)
         for annotation in category_annotations:
             has_segmentation = len(annotation.get('segmentation', [])) > 0
+            has_rle_segmentation = annotation.get('rle', {}) != {}
             has_keypoints = len(annotation.get('keypoints', [])) > 0
 
-            if has_segmentation or has_keypoints:
+            if has_segmentation or has_keypoints or has_rle_segmentation:
 
                 if has_keypoints:
                     arr = np.array(annotation.get('keypoints', []))
                     arr = arr[2::3]
                     annotation['num_keypoints'] = len(arr[arr > 0])
-                
+                if has_rle_segmentation:
+                    annotation['segmentation'] = annotation.get('rle')
+
+                annotation.pop('rle')
                 annotations.append(annotation)
 
         if len(category.get('keypoint_labels')) > 0:

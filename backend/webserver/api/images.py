@@ -221,7 +221,7 @@ class ImageBinaryMask(Resource):
         except:
             return {'message': 'annotation does not exist'}, 400
 
-        if (len(list(annotation.segmentation)) == 0):
+        if (len(list(annotation.segmentation)) == 0 and not dict(annotation.rle)):
             return {'message': 'annotation is empty'}, 400
 
         # Convert uncompressed RLE to encoded RLE mask
@@ -230,11 +230,13 @@ class ImageBinaryMask(Resource):
             "size": [height, width]
         }
         '''
-        #bin_mask =  coco_util.get_bin_mask(list(annotation.segmentation), height, width)
-        rles = mask.frPyObjects(dict(annotation.rle), height, width)
-        rle = mask.merge([rles])
-        # Extract the binary mask
-        bin_mask = mask.decode(rle)
+        if dict(annotation.rle) :
+            rles = mask.frPyObjects(dict(annotation.rle), height, width)
+            rle = mask.merge([rles])
+            # Extract the binary mask
+            bin_mask = mask.decode(rle)
+        else :
+            bin_mask =  coco_util.get_bin_mask(list(annotation.segmentation), height, width)
         
         img = Image.fromarray((255*bin_mask).astype('uint8'))
         image_io = io.BytesIO()
