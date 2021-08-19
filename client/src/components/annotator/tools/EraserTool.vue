@@ -75,7 +75,7 @@ export default {
     },
     onMouseUp() {
       this.$parent.currentAnnotation.createUndoAction("Subtract");
-      this.$parent.currentAnnotation.subtract(this.selection, false, false);
+      this.$parent.currentAnnotation.subtract(this.selection, true, false);
       this.removeSelection();
     },
     erase() {
