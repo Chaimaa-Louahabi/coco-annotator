@@ -78,8 +78,8 @@ def export_semantic_segmentation(task_id, dataset_id, categories):
         
                 if category_annotations.count() == 0:
                     category_index += 1
-
                     continue
+                
                 found_categories.append(category_index)
                 category_annotations = fix_ids(category_annotations)
 
