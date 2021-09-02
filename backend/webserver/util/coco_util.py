@@ -10,7 +10,6 @@ from database import (
     CategoryModel,
     AnnotationModel
 )
-
 def paperjs_to_coco(image_width, image_height, paperjs):
     """
     Given a paperjs CompoundPath, converts path into coco segmentation format based on children paths

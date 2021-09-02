@@ -1,7 +1,6 @@
 import datetime
 import base64
 import io
-from numpy.core.numeric import full
 
 import pycocotools.mask as mask
 import numpy as np
@@ -20,7 +19,6 @@ from database import (
     AnnotationModel,
     SessionEvent
 )
-
 
 api = Namespace('annotator', description='Annotator related operations')
 
@@ -141,7 +139,7 @@ class AnnotatorData(Resource):
                         sub_binary_mask[sub_binary_mask>0] = 1
 
                         # Insert the sub Image into its position in the full image
-                        full_binary_mask = np.zeros((height,width))
+                        full_binary_mask = np.zeros((height,width), np.uint8)
                         full_binary_mask[ann_y:ann_y+ann_height, ann_x:ann_x+ann_width] = sub_binary_mask
                         
                         # TODO: Use pyCOCOTools.encode : the LEB128 rle counts get 

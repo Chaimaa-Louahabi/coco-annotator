@@ -313,7 +313,6 @@ export default {
       color: this.annotation.color,
       compoundPath: null,
       pixelMode: false,
-      binaryMask: [],
       keypoints: null,
       metadata: [],
       isEmpty: true,
@@ -359,11 +358,6 @@ export default {
         this.annotation.segmentation
       );
       if (JSON.stringify(this.annotation.rle) != "{}") this.pixelMode = true;
-    },
-    initBinaryMask() {
-      this.binaryMask = Array.from(Array(this.annotation.height), () =>
-        new Array(this.annotation.width).fill(0)
-      );
     },
     createCompoundPath(json, segments) {
       json = json || null;

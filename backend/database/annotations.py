@@ -24,7 +24,7 @@ class AnnotationModel(DynamicDocument):
     bbox = ListField(default=[0, 0, 0, 0])
     iscrowd = BooleanField(default=False)
     isbbox = BooleanField(default=False)
-
+    
     creator = StringField(required=True)
     width = IntField()
     height = IntField()

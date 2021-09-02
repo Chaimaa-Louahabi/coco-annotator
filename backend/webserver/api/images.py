@@ -17,7 +17,6 @@ import datetime
 import os
 import io
 
-
 api = Namespace('image', description='Image related operations')
 
 image_all = reqparse.RequestParser()
